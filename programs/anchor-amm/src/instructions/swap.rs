@@ -12,8 +12,8 @@ pub struct Swap<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    pub mint_x: Box<Account<'info, Mint>>,
-    pub mint_y: Box<Account<'info, Mint>>,
+    pub mint_x: Account<'info, Mint>,
+    pub mint_y: Account<'info, Mint>,
 
     #[account(
 		has_one = mint_x,

@@ -2,10 +2,10 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token::{burn, transfer, Burn, Mint, Token, TokenAccount, Transfer};
 
-use constant_product_curve::ConstantProduct;
-
 use crate::error::AmmError;
 use crate::state::Config;
+
+use constant_product_curve::ConstantProduct;
 
 #[derive(Accounts)]
 #[instruction(seed: u64)]
@@ -13,23 +13,23 @@ pub struct Withdraw<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
 
-    pub mint_x: Box<Account<'info, Mint>>,
-    pub mint_y: Box<Account<'info, Mint>>,
+    pub mint_x: Account<'info, Mint>,
+    pub mint_y: Account<'info, Mint>,
 
     #[account(
 		has_one = mint_x,
 		has_one = mint_y,
-		seeds = [b"config", seed.to_le_bytes().as_ref()],
+		seeds = [b"config", config.seed.to_le_bytes().as_ref()],
 		bump = config.config_bump,
 	)]
-    pub config: Box<Account<'info, Config>>,
+    pub config: Account<'info, Config>,
 
     #[account(
 		mut,
 		seeds = [b"lp", config.key().as_ref()],
 		bump = config.lp_bump,
 	)]
-    pub mint_lp: Box<Account<'info, Mint>>,
+    pub mint_lp: Account<'info, Mint>,
 
     #[account(
 		mut,
@@ -75,7 +75,7 @@ impl<'info> Withdraw<'info> {
         require!(!self.config.locked, AmmError::PoolLocked);
         require_neq!(amount, 0, AmmError::InvalidAmount);
 
-        let amounts = ConstantProduct::xy_deposit_amounts_from_l(
+        let amounts = ConstantProduct::xy_withdraw_amounts_from_l(
             self.vault_x.amount,
             self.vault_y.amount,
             self.mint_lp.supply,
@@ -131,7 +131,7 @@ impl<'info> Withdraw<'info> {
         let cpi_accounts = Burn {
             mint: self.mint_lp.to_account_info(),
             from: self.user_lp.to_account_info(),
-            authority: self.config.to_account_info(),
+            authority: self.user.to_account_info(),
         };
 
         let ctx = CpiContext::new(cpi_program, cpi_accounts);
